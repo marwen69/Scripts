@@ -1,0 +1,67 @@
+
+---
+- name: Deploy Kubernetes Cluster
+  hosts: all
+  become: yes
+  vars:
+    kube_version: "1.29.2"
+    pod_network_cidr: "10.244.0.0/16"
+  order: sorted
+  serial: 1
+
+  handlers:
+    - name: Restart containerd
+      systemd:
+        name: containerd
+        state: restarted
+
+    - name: Restart docker
+      systemd:
+        name: docker
+        state: restarted
+
+    - name: Reboot system
+      reboot:
+        msg: "Reboot required for kernel changes"
+        reboot_timeout: 600
+
+  tasks:
+    - name: Configure all nodes
+      include_tasks: tasks/common.yml
+
+    - name: Configure master nodes
+      include_tasks: tasks/master.yml
+      when: inventory_hostname in groups.master
+
+    - name: Configure worker nodes
+      include_tasks: tasks/worker.yml
+      when: inventory_hostname in groups.workers
+
+  post_tasks:
+    - name: Apply RBAC fix
+      shell: |
+        kubectl create clusterrolebinding cluster-admin-binding \
+          --clusterrole=cluster-admin \
+          --user=system:serviceaccount:kube-system:default
+      delegate_to: "{{ groups.master[0] }}"
+      run_once: yes
+      ignore_errors: yes
+
+    - name: Verify cluster health
+      shell: |
+        kubectl get nodes
+        kubectl get pods -n kube-system
+      register: cluster_health
+      until: cluster_health.rc == 0
+      retries: 10
+      delay: 30
+      delegate_to: "{{ groups.master[0] }}"
+      run_once: yes
+
+  
+    - name: Show final status
+      debug:
+        msg: "Kubernetes cluster deployed successfully! Nodes:\n{{ cluster_health.stdout }}"
+      run_once: yes
+      when: cluster_health.rc == 0
+
