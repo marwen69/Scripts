@@ -1,6 +1,6 @@
 # vSphere Specific
-vsphere_user           = "administrator@vsphere.local"
-vsphere_password       = "Cisco123*" # Add your password here
+
+
 vsphere_vcenter        = "172.29.31.94"
 vsphere-datacenter     = "Datacenter"
 vsphere-host           = "172.29.31.95"
