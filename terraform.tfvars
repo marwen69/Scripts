@@ -26,5 +26,5 @@ ipv4_netmask           = "24"
 dns_server_list        = ["172.29.31.94", "8.8.8.8"]
 
 # SSH Configuration
-public_key             = "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAr..."
-ssh_username           = "ubuntu"
+public_key             = ""
+ssh_username           = ""
