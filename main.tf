@@ -42,7 +42,7 @@ data "vsphere_virtual_machine" "template" {
 resource "vsphere_virtual_machine" "vm" {
   count = length(var.ipv4_addresses) # Create one VM for each IP address
 
-  name             = count.index == 0 ? "master" : "worker" # Name the VMs as master and worker
+  name             = count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2") # Name the VMs as master, worker, and master2
   resource_pool_id = data.vsphere_host.host.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
   num_cpus         = var.cpu
@@ -56,7 +56,7 @@ resource "vsphere_virtual_machine" "vm" {
   }
 
   disk {
-    label            = "${count.index == 0 ? "master" : "worker"}-disk"
+    label            = "${count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2")}-disk"
     thin_provisioned = data.vsphere_virtual_machine.template.disks.0.thin_provisioned
     eagerly_scrub    = data.vsphere_virtual_machine.template.disks.0.eagerly_scrub
     size             = var.disksize == "" ? data.vsphere_virtual_machine.template.disks.0.size : var.disksize
@@ -67,7 +67,7 @@ resource "vsphere_virtual_machine" "vm" {
 
     customize {
       linux_options {
-        host_name = count.index == 0 ? "master" : "worker"
+        host_name = count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2")
         domain    = var.vm-domain
       }
 
@@ -83,20 +83,20 @@ resource "vsphere_virtual_machine" "vm" {
 
   extra_config = {
     "guestinfo.metadata"          = base64encode(templatefile("${path.module}/templates/metadata.yaml", {
-      name         = count.index == 0 ? "master" : "worker",
+      name         = count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2"),
       ipv4_address = var.ipv4_addresses[count.index],
       ipv4_gateway = var.ipv4_gateway,
       dns_server_1 = var.dns_server_list[0],
       dns_server_2 = var.dns_server_list[1],
       public_key   = var.public_key,
-      ssh_username = count.index == 0 ? "master" : "worker", # Set username dynamically
+      ssh_username = count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2"), # Set username dynamically
       vm-domain    = var.vm-domain
     }))
     "guestinfo.metadata.encoding" = "base64"
     "guestinfo.userdata"          = base64encode(templatefile("${path.module}/templates/userdata.yaml", {
-      ssh_username = count.index == 0 ? "master" : "worker", # Set username dynamically
+      ssh_username = count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2"), # Set username dynamically
       public_key   = var.public_key,
-      vm_name      = count.index == 0 ? "master" : "worker" # Pass the VM name
+      vm_name      = count.index == 0 ? "master" : (count.index == 1 ? "worker" : "master2") # Pass the VM name
     }))
     "guestinfo.userdata.encoding" = "base64"
   }
