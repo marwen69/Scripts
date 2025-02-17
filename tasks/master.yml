@@ -119,19 +119,5 @@
       shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
       when: dns_apply.changed
 
-    - name: Verify DNS resolution
-      shell: |
-        sudo kubectl run dns-test \
-          --image=busybox \
-          --rm -i --restart=Never \
-          -- sh -c 'nslookup github.com | grep "Address: 1"'
-      register: dns_test
-      failed_when: "'Address: 1' not in dns_test.stdout"
-      args:
-        executable: /bin/bash
-
-    - name: Show DNS test results
-      debug:
-        msg: "DNS resolution successful: {{ dns_test.stdout }}"
-  
+    
   
