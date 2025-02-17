@@ -83,4 +83,11 @@
       run_once: yes
       when: join_command.failed
 
+      
+    - name: Execute join command
+      command: "{{ join_command.stdout }}"
+      register: join_result
+      until: join_result.rc == 0
+      retries: 5
+      delay: 30
 
