@@ -1,5 +1,5 @@
-
 ---
+
 - name: Deploy Kubernetes Cluster
   hosts: all
   become: yes
@@ -58,10 +58,8 @@
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
 
-  
     - name: Show final status
       debug:
         msg: "Kubernetes cluster deployed successfully! Nodes:\n{{ cluster_health.stdout }}"
       run_once: yes
       when: cluster_health.rc == 0
-
