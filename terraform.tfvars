@@ -20,7 +20,7 @@ vsphere-unverified-ssl = "true"
 vm-domain              = "home"
 
 # Network Configuration
-ipv4_addresses         = ["172.29.31.99", "172.29.31.100", "172.29.31.97"] # Static IP addresses
+ipv4_addresses         = ["172.29.31.99", "172.29.31.100"] # Static IP addresses
 ipv4_gateway           = "172.29.31.254"
 ipv4_netmask           = "24"
 dns_server_list        = ["172.29.31.94", "8.8.8.8"]
