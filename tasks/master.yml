@@ -1,4 +1,3 @@
----
 - name: Install required packages
   block:
     - name: Install containerd
@@ -103,18 +102,23 @@
       failed_when: join_verify.rc != 0
       run_once: yes
   
+  
     - name: Configure CoreDNS
       block:
-        - name: Deploy CoreDNS config
-          template:
-            src: templates/coredns-configmap.j2
-            dest: /tmp/coredns-configmap.yaml
+      - name: Deploy CoreDNS config
+        template:
+          src: templates/coredns-configmap.j2
+          dest: /tmp/coredns-configmap.yaml
 
-        - name: Apply DNS configuration
-          shell: kubectl apply -f /tmp/coredns-configmap.yaml
-          register: dns_apply
-          changed_when: "'configured' not in dns_apply.stdout"
+    - name: Apply DNS configuration
+      shell: kubectl apply -f /tmp/coredns-configmap.yaml
+      register: dns_apply
+      changed_when: "'configured' not in dns_apply.stdout"
 
-        - name: Restart CoreDNS pods
-          shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
-          when: dns_apply.changed
+    - name: Restart CoreDNS pods
+      shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
+      when: dns_apply.changed
+
+    
+  
+  
