@@ -1,5 +1,4 @@
 ---
-
 - name: Prepare Kubernetes components
   block:
     - name: Install dependencies
@@ -65,8 +64,8 @@
     - name: Check if worker node is already part of the cluster
       command: kubectl get nodes | grep {{ inventory_hostname }}
       register: node_check
-      ignore_errors: yes
       changed_when: false
+      failed_when: node_check.rc not in [0, 1]
 
     - name: Fetch join command from master
       command: cat /tmp/join-command.sh
@@ -75,7 +74,7 @@
       run_once: yes
       when: node_check.rc != 0
       ignore_errors: yes
-      
+
     - name: Label worker node
       command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/worker=""
       when: inventory_hostname in groups.workers
@@ -87,7 +86,7 @@
         chmod 600 /tmp/join-command.sh
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
-      when: join_command.failed
+      when: node_check.rc != 0 and join_command.failed
 
     - name: Execute join command
       command: "{{ join_command.stdout }}"
