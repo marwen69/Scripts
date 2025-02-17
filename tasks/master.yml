@@ -61,6 +61,11 @@
       template:
         src: templates/kubeadm-config.j2
         dest: /tmp/kubeadm-config.yaml
+        
+    - name: Label master node
+      command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master=""
+      when: inventory_hostname in groups.master
+      ignore_errors: yes
 
     - name: Initialize control plane
       command: >
@@ -89,11 +94,44 @@
       shell: |
         kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
-- name: Verify join command creation
-  shell: |
-    [ -f /tmp/join-command.sh ] && grep -q "kubeadm join" /tmp/join-command.sh
-  register: join_verify
-  changed_when: false
-  failed_when: join_verify.rc != 0
-  run_once: yes
+    - name: Verify join command creation
+      shell: |
+        [ -f /tmp/join-command.sh ] && grep -q "kubeadm join" /tmp/join-command.sh
+      register: join_verify
+      changed_when: false
+      failed_when: join_verify.rc != 0
+      run_once: yes
+  
+  
+    - name: Configure CoreDNS
+      block:
+      - name: Deploy CoreDNS config
+        template:
+          src: templates/coredns-configmap.j2
+          dest: /tmp/coredns-configmap.yaml
 
+    - name: Apply DNS configuration
+      shell: kubectl apply -f /tmp/coredns-configmap.yaml
+      register: dns_apply
+      changed_when: "'configured' not in dns_apply.stdout"
+
+    - name: Restart CoreDNS pods
+      shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
+      when: dns_apply.changed
+
+    - name: Verify DNS resolution
+      shell: |
+        sudo kubectl run dns-test \
+          --image=busybox \
+          --rm -i --restart=Never \
+          -- sh -c 'nslookup github.com | grep "Address: 1"'
+      register: dns_test
+      failed_when: "'Address: 1' not in dns_test.stdout"
+      args:
+        executable: /bin/bash
+
+    - name: Show DNS test results
+      debug:
+        msg: "DNS resolution successful: {{ dns_test.stdout }}"
+  
+  
