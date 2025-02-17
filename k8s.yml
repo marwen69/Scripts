@@ -1,5 +1,4 @@
 ---
-
 - name: Deploy Kubernetes Cluster
   hosts: all
   become: yes
@@ -15,15 +14,11 @@
         name: containerd
         state: restarted
 
-    - name: Restart docker
-      systemd:
-        name: docker
-        state: restarted
-
     - name: Reboot system
       reboot:
         msg: "Reboot required for kernel changes"
         reboot_timeout: 600
+      when: reboot_required | default(false)
 
   tasks:
     - name: Configure all nodes
@@ -38,7 +33,15 @@
       when: inventory_hostname in groups.workers
 
   post_tasks:
-    - name: Apply RBAC fix
+    - name: Ensure kubectl is installed on master
+      shell: command -v kubectl
+      register: kubectl_check
+      changed_when: false
+      failed_when: kubectl_check.rc != 0
+      delegate_to: "{{ groups.master[0] }}"
+      run_once: yes
+
+    - name: Apply RBAC fix (if necessary)
       shell: |
         kubectl create clusterrolebinding cluster-admin-binding \
           --clusterrole=cluster-admin \
@@ -46,17 +49,18 @@
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
       ignore_errors: yes
+      when: kubectl_check.rc == 0
 
     - name: Verify cluster health
       shell: |
-        kubectl get nodes
-        kubectl get pods -n kube-system
+        kubectl get nodes && kubectl get pods -n kube-system
       register: cluster_health
       until: cluster_health.rc == 0
       retries: 10
       delay: 30
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
+      when: kubectl_check.rc == 0
 
     - name: Show final status
       debug:
