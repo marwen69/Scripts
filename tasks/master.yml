@@ -120,8 +120,4 @@
       when: dns_apply.changed
 
     
-    - name: Show DNS test results
-      debug:
-        msg: "DNS resolution successful: {{ dns_test.stdout }}"
-  
-  
+    
