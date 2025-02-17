@@ -18,14 +18,17 @@
           file:
             path: /etc/containerd
             state: directory
+
         - name: Generate containerd default config
           command: containerd config default
           register: containerd_config
           changed_when: false
+
         - name: Apply SystemdCgroup setting
           copy:
             dest: /etc/containerd/config.toml
             content: "{{ containerd_config.stdout | regex_replace('SystemdCgroup = false', 'SystemdCgroup = true') }}"
+
         - name: Restart containerd
           systemd:
             name: containerd
@@ -62,7 +65,7 @@
       template:
         src: templates/kubeadm-config.j2
         dest: /tmp/kubeadm-config.yaml
-        
+
     - name: Label master node
       command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master=""
       when: inventory_hostname in groups.master
@@ -102,7 +105,7 @@
       changed_when: false
       failed_when: join_verify.rc != 0
       run_once: yes
-  
+
     - name: Configure CoreDNS
       block:
         - name: Deploy CoreDNS config
@@ -118,3 +121,16 @@
         - name: Restart CoreDNS pods
           shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
           when: dns_apply.changed
+
+- name: Join worker nodes
+  block:
+    - name: Vérifier si le nœud est déjà dans le cluster
+      shell: "kubectl get nodes --no-headers -o custom-columns=':metadata.name' | grep -w {{ inventory_hostname }}"
+      register: node_check
+      changed_when: false
+      failed_when: node_check.rc > 1
+      ignore_errors: yes
+
+    - name: Joindre le worker au cluster
+      shell: "{{ lookup('file', '/tmp/join-command.sh') }}"
+      when: node_check.rc != 0
