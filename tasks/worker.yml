@@ -68,6 +68,12 @@
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
       ignore_errors: yes
+      
+    - name: Label worker node
+      command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/worker=""
+      when: inventory_hostname in groups.workers
+      ignore_errors: yes
+
 
     - name: Regenerate join command if missing
       shell: |
@@ -77,9 +83,4 @@
       run_once: yes
       when: join_command.failed
 
-    - name: Execute join command
-      command: "{{ join_command.stdout }}"
-      register: join_result
-      until: join_result.rc == 0
-      retries: 5
-      delay: 30
+
