@@ -62,7 +62,11 @@
         src: templates/kubeadm-config.j2
         dest: /tmp/kubeadm-config.yaml
         
-    
+    - name: Label master node
+      command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master=""
+      when: inventory_hostname in groups.master
+      ignore_errors: yes
+
     - name: Initialize control plane
       command: >
         kubeadm init --config=/tmp/kubeadm-config.yaml
@@ -97,14 +101,6 @@
       changed_when: false
       failed_when: join_verify.rc != 0
       run_once: yes
-
-    - name: Verify join command creation
-      shell: |
-        [ -f /tmp/join-command.sh ] && grep -q "kubeadm join" /tmp/join-command.sh
-      register: join_verify
-      changed_when: false
-      failed_when: join_verify.rc != 0
-      run_once: yes
   
   
     - name: Configure CoreDNS
@@ -123,6 +119,19 @@
       shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
       when: dns_apply.changed
 
-    
+    - name: Verify DNS resolution
+      shell: |
+        sudo kubectl run dns-test \
+          --image=busybox \
+          --rm -i --restart=Never \
+          -- sh -c 'nslookup github.com | grep "Address: 1"'
+      register: dns_test
+      failed_when: "'Address: 1' not in dns_test.stdout"
+      args:
+        executable: /bin/bash
+
+    - name: Show DNS test results
+      debug:
+        msg: "DNS resolution successful: {{ dns_test.stdout }}"
   
   
