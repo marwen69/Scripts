@@ -33,23 +33,21 @@
 - name: Install Kubernetes components
   block:
     - name: Add Kubernetes repo
-  yum_repository:
-    name: kubernetes
-    description: Kubernetes RPM Repository
-    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
-    gpgcheck: yes
-    enabled: yes
-
+      yum_repository:
+        name: kubernetes
+        description: Kubernetes RPM Repository
+        baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+        gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        gpgcheck: yes
+        enabled: yes
 
     - name: Install Kubernetes packages
-  yum:
-    name:
-      - kubelet-{{ kube_version }}
-      - kubeadm-{{ kube_version }}
-      - kubectl-{{ kube_version }}
-    state: present
-
+      yum:
+        name:
+          - kubelet-1.32.0
+          - kubeadm-1.32.0
+          - kubectl-1.32.0
+        state: present
 
     - name: Enable kubelet
       systemd:
@@ -62,7 +60,7 @@
       template:
         src: templates/kubeadm-config.j2
         dest: /tmp/kubeadm-config.yaml
-        
+
     - name: Label master node
       command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/master=""
       when: inventory_hostname in groups.master
