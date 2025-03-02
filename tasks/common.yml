@@ -1,4 +1,3 @@
-
 ---
 - name: Configure system prerequisites
   block:
@@ -114,16 +113,15 @@
           }
       notify: Restart docker
 
-    - name: Configure firewall
-      firewalld:
-        port: "{{ item }}"
-        permanent: yes
-        state: enabled
-      with_items:
-        - 6443/tcp
-        - 2379-2380/tcp
-        - 10250/tcp
-        - 10259/tcp
-        - 10257/tcp
-        - 32686/tcp  # Argo CD NodePort
+- name: Configure firewall
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+  with_items:
+    - 6443/tcp
+    - 2379-2380/tcp
+    - 10250/tcp
+    - 10259/tcp
+    - 10257/tcp
 
