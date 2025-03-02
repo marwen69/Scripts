@@ -14,7 +14,7 @@
         name: kubernetes
         description: Kubernetes RPM Repository
         baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
-        gpgkey: https://pkgs.k8s.io/core:/v1.29/rpm/repodata/repomd.xml.key
+        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
         gpgcheck: yes
         repo_gpgcheck: yes
         enabled: yes
@@ -24,6 +24,21 @@
         name:
           - kubelet-{{ kube_version }}
           - kubeadm-{{ kube_version }}
+        state: present
+
+    - name: Add Docker and containerd repository
+      yum_repository:
+        name: docker-ce
+        description: Docker CE Repository
+        baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        gpgcheck: yes
+        enabled: yes
+
+    - name: Install container runtime (containerd)
+      yum:
+        name:
+          - containerd.io
         state: present
 
     - name: Configure containerd
@@ -52,6 +67,12 @@
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
       ignore_errors: yes
+      
+    - name: Label worker node
+      command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/worker=""
+      when: inventory_hostname in groups.workers
+      ignore_errors: yes
+
 
     - name: Regenerate join command if missing
       shell: |
@@ -60,23 +81,3 @@
       delegate_to: "{{ groups.master[0] }}"
       run_once: yes
       when: join_command.failed
-
-    - name: Join Kubernetes cluster
-      command: "{{ join_command.stdout }} --ignore-preflight-errors=Swap"
-      args:
-        creates: /etc/kubernetes/kubelet.conf
-
-    - name: Label worker node
-      command: kubectl label nodes {{ inventory_hostname }} node-role.kubernetes.io/worker= --overwrite
-      delegate_to: "{{ groups.master[0] }}"
-      ignore_errors: yes
-
-- name: Post-join configuration
-  block:
-    - name: Verify node status
-      shell: kubectl get nodes
-      delegate_to: "{{ groups.master[0] }}"
-      register: node_status
-      until: "'Ready' in node_status.stdout"
-      retries: 10
-      delay: 30
