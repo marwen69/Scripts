@@ -13,8 +13,8 @@
       yum_repository:
         name: kubernetes
         description: Kubernetes RPM Repository
-        baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
-        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
+        baseurl: https://pkgs.k8s.io/core/stable/v1.29/rpm/
+        gpgkey: https://pkgs.k8s.io/core/stable/rpm/repodata/repomd.xml.key
         gpgcheck: yes
         repo_gpgcheck: yes
         enabled: yes
