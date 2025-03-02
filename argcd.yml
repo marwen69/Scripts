@@ -1,3 +1,4 @@
+---
 - name: Deploy Argo CD on Kubernetes
   hosts: master
   become: yes
@@ -30,6 +31,28 @@
       register: svc_patch
       changed_when: "'no change' not in svc_patch.stdout"
 
+    - name: Add worker node labels
+      command: kubectl label nodes {{ item }} node-role.kubernetes.io/worker= --overwrite
+      loop: "{{ groups.workers }}"
+      delegate_to: "{{ groups.master[0] }}"
+      run_once: yes
+      ignore_errors: yes
+
+    - name: Schedule Argo CD on worker nodes
+      shell: |
+        kubectl patch deployment -n {{ argocd_namespace }} {{ item }} \
+          --type=json \
+          -p='[{"op": "add", "path": "/spec/template/spec/nodeSelector", "value": {"node-role.kubernetes.io/worker": ""}}]'
+      loop:
+        - argocd-server
+        - argocd-repo-server
+        - argocd-application-controller
+        - argocd-redis
+        - argocd-dex-server
+      register: patch_result
+      failed_when: false
+      changed_when: "'no change' not in patch_result.stdout"
+
     - name: Get Argo CD admin password
       shell: |
         kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret \
@@ -41,8 +64,15 @@
     - name: Display access information
       debug:
         msg: |
-          Argo CD déployé avec succès !
-          URL: https://{{ inventory_hostname }}:{{ argocd_nodeport }}
-          Utilisateur: admin
-          Mot de passe: {{ argocd_password.stdout }}
-          Accès local: kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} {{ argocd_nodeport }}:443
+          Argo CD deployed successfully!
+          URL: https://{{ groups.workers[0] }}:{{ argocd_nodeport }}
+          Username: admin
+          Password: {{ argocd_password.stdout }}
+          Local access: kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} {{ argocd_nodeport }}:443
+
+    - name: Ensure firewall allows NodePort
+      firewalld:
+        port: "{{ argocd_nodeport }}/tcp"
+        permanent: yes
+        state: enabled
+      become: yes
