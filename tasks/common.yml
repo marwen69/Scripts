@@ -41,7 +41,6 @@
     gpgcheck: yes
     enabled: yes
 
-
 - name: Install Docker
   yum:
     name: docker
@@ -67,9 +66,9 @@
 - name: Install Kubernetes packages
   yum:
     name:
-      - kubelet-{{ kube_version }}
-      - kubeadm-{{ kube_version }}
-      - kubectl-{{ kube_version }}
+      - kubelet-1.32.0
+      - kubeadm-1.32.0
+      - kubectl-1.32.0
     state: present
 
 - name: Enable kubelet
