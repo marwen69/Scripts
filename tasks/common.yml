@@ -1,126 +1,78 @@
+- name: Install required packages
+  yum:
+    name:
+      - curl
+      - wget
+      - vim
+      - net-tools
+      - iputils
+      - jq
+    state: present
 
----
-- name: Configure system prerequisites
-  block:
-    - name: Set SELinux to permissive
-      selinux:
-        policy: targeted
-        state: permissive
-      notify: Reboot system
+- name: Disable Swap
+  command: swapoff -a
+  ignore_errors: yes
 
-    - name: Disable SELinux permanently
-      lineinfile:
-        path: /etc/selinux/config
-        regexp: '^SELINUX='
-        line: 'SELINUX=disabled'
-        validate: '/usr/sbin/sestatus %s'
+- name: Remove Swap entry from fstab
+  mount:
+    name: none
+    fstype: swap
+    state: absent
+  ignore_errors: yes
 
-    - name: Disable swap
-      block:
-        - name: Disable active swap
-          command: swapoff -a
-        
-        - name: Disable swap in fstab
-          replace:
-            path: /etc/fstab
-            regexp: '^([^#].*?\bswap\b.*)$'
-            replace: '#\1'
-            backup: yes
-      notify: Reboot system
+- name: Configure sysctl settings for Kubernetes
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { name: "net.bridge.bridge-nf-call-iptables", value: "1" }
+    - { name: "net.ipv4.ip_forward", value: "1" }
+  ignore_errors: yes
 
-    - name: Load kernel modules
-      modprobe:
-        name: "{{ item }}"
-        state: present
-      with_items:
-        - br_netfilter
-        - overlay
+- name: Add Kubernetes repo
+  yum_repository:
+    name: kubernetes
+    description: Kubernetes RPM Repository
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
+    enabled: yes
+    gpgcheck: yes
 
-    - name: Configure sysctl
-      sysctl:
-        name: "{{ item.key }}"
-        value: "{{ item.value }}"
-        state: present
-        reload: yes
-      with_dict:
-        net.bridge.bridge-nf-call-ip6tables: 1
-        net.bridge.bridge-nf-call-iptables: 1
-        net.ipv4.ip_forward: 1
+- name: Install Docker
+  yum:
+    name: docker
+    state: present
 
-    - name: Persist kernel settings
-      copy:
-        dest: /etc/modules-load.d/k8s.conf
-        content: |
-          br_netfilter
-          overlay
+- name: Enable and start Docker
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
 
-- name: Configure container runtime
-  block:
-  - name: Remove conflicting packages
-      yum:
-        name:
-          - podman-docker
-          - docker
-          - docker-*
-        state: absent
-    - name: Add Docker CE repository
-      yum_repository:
-        name: docker-ce
-        description: Docker CE Stable
-        baseurl: https://download.docker.com/linux/centos/{{ ansible_distribution_major_version }}/$basearch/stable
-        gpgkey: https://download.docker.com/linux/centos/gpg
-        gpgcheck: yes
-        enabled: yes
+- name: Install containerd
+  yum:
+    name: containerd
+    state: present
 
-    - name: Install containerd.io
-      yum:
-        name: containerd.io
-        state: present
+- name: Enable and start containerd
+  systemd:
+    name: containerd
+    enabled: yes
+    state: started
 
-    - name: Configure containerd
-      copy:
-        dest: /etc/containerd/config.toml
-        content: |
-          version = 2
-          [plugins."io.containerd.grpc.v1.cri"]
-            sandbox_image = "registry.k8s.io/pause:3.9"
-            [plugins."io.containerd.grpc.v1.cri".containerd]
-              default_runtime_name = "runc"
-              [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-                runtime_type = "io.containerd.runc.v2"
-                [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-                  SystemdCgroup = true
-      notify: Restart containerd
+- name: Install Kubernetes packages
+  yum:
+    name:
+      - kubelet-{{ kube_version }}
+      - kubeadm-{{ kube_version }}
+      - kubectl-{{ kube_version }}
+    state: present
 
-    - name: Install Docker CE
-      yum:
-        name:
-          - docker-ce
-          - docker-ce-cli
-        state: present
-
-    - name: Configure Docker daemon
-      copy:
-        dest: /etc/docker/daemon.json
-        content: |
-          {
-            "exec-opts": ["native.cgroupdriver=systemd"],
-            "log-driver": "json-file",
-            "log-opts": {
-              "max-size": "100m"
-            },
-            "storage-driver": "overlay2"
-          }
-      notify: Restart docker
-
-- name: Configure firewall
-  firewalld:
-    port: "{{ item }}"
-    permanent: yes
-    state: enabled
-  with_items:
-    - 6443/tcp
-    - 2379-2380/tcp
-    - 10250/tcp
-    - 10259/tcp
-    - 10257/tcp
+- name: Enable kubelet
+  systemd:
+    name: kubelet
+    enabled: yes
+    state: started
