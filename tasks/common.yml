@@ -1,3 +1,4 @@
+
 ---
 - name: Configure system prerequisites
   block:
@@ -124,4 +125,3 @@
     - 10250/tcp
     - 10259/tcp
     - 10257/tcp
-
