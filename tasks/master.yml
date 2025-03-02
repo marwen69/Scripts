@@ -36,11 +36,10 @@
       yum_repository:
         name: kubernetes
         description: Kubernetes RPM Repository
-        baseurl: https://pkgs.k8s.io/core/stable/v1.29/rpm/
-        gpgkey: https://pkgs.k8s.io/core/stable/rpm/repodata/repomd.xml.key
-        gpgcheck: yes
-        repo_gpgcheck: yes
+        baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+        gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
         enabled: yes
+        gpgcheck: yes
 
     - name: Install Kubernetes packages
       yum:
@@ -100,21 +99,3 @@
       register: join_verify
       changed_when: false
       failed_when: join_verify.rc != 0
-      run_once: yes
-  
-  
-    - name: Configure CoreDNS
-      block:
-      - name: Deploy CoreDNS config
-        template:
-          src: templates/coredns-configmap.j2
-          dest: /tmp/coredns-configmap.yaml
-
-    - name: Apply DNS configuration
-      shell: kubectl apply -f /tmp/coredns-configmap.yaml
-      register: dns_apply
-      changed_when: "'configured' not in dns_apply.stdout"
-
-    - name: Restart CoreDNS pods
-      shell: kubectl delete pod -n kube-system -l k8s-app=kube-dns
-      when: dns_apply.changed
