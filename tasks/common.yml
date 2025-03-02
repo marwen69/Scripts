@@ -56,6 +56,13 @@
 
 - name: Configure container runtime
   block:
+  - name: Remove conflicting packages
+      yum:
+        name:
+          - podman-docker
+          - docker
+          - docker-*
+        state: absent
     - name: Add Docker CE repository
       yum_repository:
         name: docker-ce
