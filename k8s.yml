@@ -4,10 +4,10 @@
   hosts: all
   become: yes
   vars:
-  kube_version: "1.32.0"
-  pod_network_cidr: "10.244.0.0/16"
-  order: sorted
-  serial: 1
+    kube_version: "1.32.0"
+    pod_network_cidr: "10.244.0.0/16"
+    order: sorted
+    serial: 1
 
   handlers:
     - name: Restart containerd
