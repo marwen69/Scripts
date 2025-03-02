@@ -33,12 +33,12 @@
 
 - name: Install Kubernetes components
   block:
-    - name: Add Kubernetes repo
+        - name: Add Kubernetes repo
       yum_repository:
         name: kubernetes
         description: Kubernetes RPM Repository
-        baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
-        gpgkey: https://pkgs.k8s.io/core:/v1.29/rpm/repodata/repomd.xml.key
+        baseurl: https://pkgs.k8s.io/core/stable/v1.29/rpm/
+        gpgkey: https://pkgs.k8s.io/core/stable/rpm/repodata/repomd.xml.key
         gpgcheck: yes
         repo_gpgcheck: yes
         enabled: yes
