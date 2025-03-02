@@ -10,7 +10,7 @@ vm-template-name       = "centos9"
 vsphere-template-folder = "" # Leave empty if the template is not in a folder
 
 # VM Configuration
-name                   = "ubuntu22-04-test"
+name                   = "centos7_64Guest"
 cpu                    = 4
 cores-per-socket       = 1
 ram                    = 4096
